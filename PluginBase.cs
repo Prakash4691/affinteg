@@ -62,12 +62,15 @@ namespace custom_api_plugin
             }
             catch (InvalidPluginExecutionException invalidPluginExecutionException)
             {
-                localPluginContext.Trace($"Plugin validation/error response: {invalidPluginExecutionException}");
+                // Trace type and message only: full ToString() includes stack traces and
+                // may embed payload values from validation messages.
+                localPluginContext.Trace(
+                    $"Plugin validation/error response: {invalidPluginExecutionException.GetType().Name}: {invalidPluginExecutionException.Message}");
                 throw;
             }
             catch (Exception ex)
             {
-                localPluginContext.Trace($"Unexpected exception: {ex}");
+                localPluginContext.Trace($"Unexpected exception: {ex.GetType().Name}: {ex.Message}");
                 throw new InvalidPluginExecutionException(
                     $"An unexpected error occurred while processing the Affinity request. Correlation Id: {localPluginContext.PluginExecutionContext.CorrelationId}.",
                     ex);
@@ -112,7 +115,8 @@ namespace custom_api_plugin
             OrganizationServiceFault fault = orgServiceFault.Detail;
             if (fault == null)
             {
-                localPluginContext.Trace($"Dataverse fault without detail: {orgServiceFault}");
+                localPluginContext.Trace(
+                    $"Dataverse fault without detail: {orgServiceFault.GetType().Name}: {orgServiceFault.Message}");
                 return;
             }
 
@@ -343,18 +347,23 @@ namespace custom_api_plugin
             // The duration since the last trace.
             var deltaMilliseconds = utcNow.Subtract(_previousTraceTime).TotalMilliseconds;
 
-            try
+            if (args == null || args.Length == 0)
             {
-
-                if (args == null || args.Length == 0)
-                    _tracingService.Trace($"[+{deltaMilliseconds:N0}ms] - {message}");
-                else
+                _tracingService.Trace($"[+{deltaMilliseconds:N0}ms] - {message}");
+            }
+            else
+            {
+                try
+                {
                     _tracingService.Trace($"[+{deltaMilliseconds:N0}ms] - {string.Format(message, args)}");
+                }
+                catch (FormatException)
+                {
+                    // Diagnostics must never fail the operation: degrade to the unformatted message.
+                    _tracingService.Trace($"[+{deltaMilliseconds:N0}ms] - {message} (trace argument formatting failed)");
+                }
             }
-            catch (FormatException ex)
-            {
-                throw new InvalidPluginExecutionException($"Failed to write trace message due to error {ex.Message}", ex);
-            }
+
             _previousTraceTime = utcNow;
         }
     }

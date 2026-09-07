@@ -35,14 +35,9 @@ namespace custom_api_plugin
             CreateAccountContactRequest request = CreateAccountContactRequest.FromContext(context);
 
             tracingService.Trace("Creating account and contact from Custom API input parameters.");
-            tracingService.Trace(
-                "Validated request payload for account '{0}' and contact '{1}'.",
-                request.AccountName,
-                request.ContactEmailAddress);
+            tracingService.Trace("Validated request payload for account and contact creation.");
 
-            tracingService.Trace(
-                "Resolving relationship lead from internal email address '{0}'.",
-                request.RelationshipLeadEmailAddress);
+            tracingService.Trace("Resolving relationship lead from provided internal email address.");
             EntityReference relationshipLead = DataverseEntityHelper.ResolveSingleLookup(
                 service,
                 "systemuser",
